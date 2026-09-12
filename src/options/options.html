@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Bevara Universal Media - Options</title>
+  <style>
+    body { font-family: system-ui, sans-serif; font-size: 14px; color: #222; margin: 0; padding: 16px; min-width: 420px; }
+    h1 { font-size: 16px; color: #0b3d91; margin: 0 0 12px; }
+    fieldset { border: 1px solid #ddd; border-radius: 6px; margin: 0 0 12px; padding: 10px 12px; }
+    legend { color: #0b3d91; font-weight: 600; padding: 0 4px; }
+    label { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+    label input[type=checkbox] { margin-top: 3px; }
+    small { color: #666; display: block; }
+    textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 12px; min-height: 60px; }
+    #saved { color: #1a7f37; margin-left: 8px; opacity: 0; transition: opacity .3s; }
+    #saved.show { opacity: 1; }
+    button { padding: 6px 14px; }
+  </style>
+</head>
+<body>
+  <h1>Bevara Universal Media</h1>
+
+  <fieldset>
+    <legend>Activation</legend>
+    <label><input type="checkbox" id="enabled"> <span>Enabled<small>Watch every page for images, audio and video the browser cannot decode.</small></span></label>
+    <label><span style="flex:1">Disabled on these hosts (one per line, subdomains included)
+      <textarea id="disabledHosts" placeholder="example.com"></textarea></span></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Pipeline</legend>
+    <label><input type="checkbox" id="useWorker"> <span>Decode images and audio in a Web Worker<small>Keeps the page responsive. Falls back to the main thread when the page's CSP forbids workers.</small></span></label>
+    <label><input type="checkbox" id="progressive"> <span>Progressive video playback<small>Feeds transcoded segments to Media Source Extensions so playback starts before the transcode ends.</small></span></label>
+    <label><input type="checkbox" id="useWebcodec"> <span>Use WebCodecs when available<small>Lets the pipeline delegate H.264/AAC encoding to the platform (hardware) encoder.</small></span></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Network</legend>
+    <label><input type="checkbox" id="proxyCrossOrigin"> <span>Fetch cross-origin media through the extension<small>When a site embeds media from another origin without CORS headers, the page cannot read the bytes itself. The extension downloads them (without cookies) so the pipeline can. Disable if you would rather leave such media alone.</small></span></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Diagnostics</legend>
+    <label><input type="checkbox" id="verbose"> <span>Verbose console logging<small>Pipeline output appears in the page console, prefixed with [bevara].</small></span></label>
+  </fieldset>
+
+  <button id="save">Save</button><span id="saved">Saved</span>
+  <script src="options.js"></script>
+</body>
+</html>

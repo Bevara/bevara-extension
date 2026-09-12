@@ -1,0 +1,4 @@
+accessors/
+node_modules/
+*.zip
+test/media/trailer.ogg

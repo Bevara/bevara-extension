@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Bevara Universal Media</title>
+  <style>
+    body { font-family: system-ui, sans-serif; font-size: 13px; color: #222; margin: 0; padding: 12px; width: 340px; }
+    h1 { font-size: 14px; color: #0b3d91; margin: 0 0 8px; display: flex; align-items: center; justify-content: space-between; }
+    h1 a { font-size: 12px; font-weight: normal; }
+    .empty { color: #666; }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li { padding: 6px 0; border-top: 1px solid #eee; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; }
+    .kind { font-size: 11px; text-transform: uppercase; color: #fff; background: #0b3d91; border-radius: 3px; padding: 1px 5px; }
+    .url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+    .st { font-size: 11px; color: #666; }
+    .st.done { color: #1a7f37; } .st.error { color: #b42318; }
+    label { display: flex; gap: 6px; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid #eee; }
+  </style>
+</head>
+<body>
+  <h1>Bevara Universal Media <a href="#" id="options">Options</a></h1>
+  <div id="list"><span class="empty">Nothing taken over on this page.</span></div>
+  <label><input type="checkbox" id="siteToggle"> <span>Enabled on <b id="host"></b></span></label>
+  <script src="popup.js"></script>
+</body>
+</html>
