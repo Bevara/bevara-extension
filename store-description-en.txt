@@ -1,0 +1,115 @@
+================================================================================
+NAME (45 characters max)
+================================================================================
+Bevara Universal Media
+
+================================================================================
+SHORT SUMMARY (132 characters max — this is exactly 132)
+================================================================================
+Plays the image, audio and video formats your browser can't, decoding them with WebAssembly accessors from a Bevara filter registry.
+
+================================================================================
+DETAILED DESCRIPTION
+================================================================================
+Your browser decodes a handful of media formats and ignores the rest. Bevara
+Universal Media gives it the others.
+
+It watches every page you visit for <img>, <audio> and <video> elements, notices
+the ones your browser cannot decode, and hands them to a WebAssembly decoding
+pipeline that gives the browser back something it does play — PNG for images,
+WAV for audio, MP4/H.264 for video. The sites themselves change nothing: the
+markup stays standard HTML, and the page needs no plugin, no script and no
+cooperation of any kind.
+
+The browser always goes first. A format it might handle is left alone until it
+actually fails, so nothing is slowed down and nothing is decoded twice.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT IT PLAYS
+
+IMAGES — JPEG XL, JPEG 2000, JPEG XR, JPEG-LS, TIFF, BMP, FLIF, DDS, JBIG,
+ICNS, MNG, Photoshop (PSD), GIMP (XCF), PCX, TGA, SGI, PNM, XBM, camera raw
+(DNG, CR2, NEF, ARW, ORF, RAF, RW2 and more), and Amiga and Atari pictures.
+
+AUDIO — AC-3, Speex, ALAC, AIFF, Musepack, WavPack, True Audio, GSM 06.10,
+G.711/G.721, iLBC, Codec 2, LC3, SBC, AMR, DTS, MIDI, and tracker modules
+(MOD, XM, S3M, IT).
+
+VIDEO — Theora, HEVC, VVC (H.266), VP8/VP9, AV1, MPEG-1/2, AVS2, AVS3, EVC,
+Dirac, and AVI contents such as H.261, H.263, Motion JPEG and Ut Video.
+
+Video is transcoded progressively: playback starts on the first segment instead
+of waiting for the whole file.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PATENTS ARE NOT DECIDED FOR YOU
+
+Media formats carry patents, and this extension does not quietly make that
+choice on your behalf. Every decoder in the Bevara registry declares a patent
+status, and by default only those marked royalty-free or expired are used.
+
+A format whose decoder is marked licence-required or under-review is left to the
+browser and reported in the popup, naming the module and the status that stopped
+it. One checkbox in the options lifts the restriction, if practising those
+formats is something you are entitled to do in your jurisdiction.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT IT DOES NOT DO
+
+No account. No tracking. No analytics. Nothing about the pages you visit is
+collected, stored or sent anywhere. Decoding happens on your own machine, inside
+a Web Worker. The extension's only outbound requests are for the registry's
+public catalogue of decoders, and for the media file the page already points at.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SEE WHAT IT DID
+
+Click the toolbar icon. The badge counts the elements taken over on the current
+page, and the popup lists each one with the format recognised, the registry
+used and the patent status of the accessors involved — together with anything
+the extension declined to touch, and why. You can switch it off for a single
+site from the same popup.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OPEN SOURCE, AND AUDITABLE
+
+The decoders are the Bevara open-source accessors. Each is published with its
+licence, its patent status, its source and an Ed25519 signature recorded in an
+append-only transparency log, so what runs in your browser can be traced back to
+what was published.
+
+Try every format listed above, with no installation, at:
+https://bevara.github.io/Showcase/extension/
+
+Documentation: https://bevara.com/documentation/
+
+================================================================================
+SINGLE PURPOSE (Privacy tab)
+================================================================================
+Display and play multimedia files that the browser cannot decode natively, by
+transcoding them in the page with WebAssembly decoders.
+
+================================================================================
+PERMISSION JUSTIFICATION — storage
+================================================================================
+Stores the user's own settings (which registry to use, whether to allow
+patent-encumbered decoders, worker and progressive-playback preferences, and the
+list of sites the extension is switched off on) and caches the registry's
+catalogue of available decoders so that browsing does not re-request it.
+
+================================================================================
+PERMISSION JUSTIFICATION — host permissions (<all_urls>)
+================================================================================
+The extension cannot know in advance which site will serve a format the browser
+does not support, so it must be able to examine <img>, <audio> and <video>
+elements on any page. Host access is also what lets it read the first bytes of a
+media file to identify its format when the URL and MIME type do not say, and
+fetch a media file the page itself is not allowed to read because the server
+sends no CORS header. No page content is collected or transmitted.
+
+================================================================================
+DATA USAGE
+================================================================================
+Declare "no data collected" in every category and tick the three certifications.
+This is accurate: the extension transmits nothing about the user or the pages
+visited.

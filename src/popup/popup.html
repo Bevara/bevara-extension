@@ -13,12 +13,15 @@
     .kind { font-size: 11px; text-transform: uppercase; color: #fff; background: #0b3d91; border-radius: 3px; padding: 1px 5px; }
     .url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
     .st { font-size: 11px; color: #666; }
-    .st.done { color: #1a7f37; } .st.error { color: #b42318; }
+    .st.done { color: #1a7f37; } .st.error { color: #b42318; } .st.unavailable { color: #9a6700; }
+    .reg { font-size: 11px; color: #666; margin: 0 0 8px; }
+    .reg.bad { color: #b42318; } .reg.stale { color: #9a6700; }
     label { display: flex; gap: 6px; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid #eee; }
   </style>
 </head>
 <body>
   <h1>Bevara Universal Media <a href="#" id="options">Options</a></h1>
+  <p class="reg" id="registry">…</p>
   <div id="list"><span class="empty">Nothing taken over on this page.</span></div>
   <label><input type="checkbox" id="siteToggle"> <span>Enabled on <b id="host"></b></span></label>
   <script src="popup.js"></script>

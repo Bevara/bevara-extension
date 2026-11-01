@@ -1,34 +1,109 @@
 /* Background service worker.
  *
- * Three jobs the page cannot do for itself:
- *   - sniff:  read the first bytes of a media URL to identify its format when
- *             the extension/MIME give nothing (host_permissions bypass CORS)
- *   - fetch:  stream a cross-origin media file the page is not allowed to
- *             read (Port "bevara-fetch"), so the pipeline can consume it as a
- *             same-origin blob
- *   - state:  remember what was taken over on each tab, for the popup badge
+ * Owns everything the page cannot do for itself:
+ *   - bundle:   read accessors/bundled.json, the build-time copy of registry
+ *               files the extension serves from its own (CSP-exempt) URLs
+ *   - registry: fetch and cache /accessors/index.json, so every tab knows
+ *               which accessors exist, at what version, with which licence
+ *               and patent status, without asking the registry again
+ *   - sniff:    read the first bytes of a media URL to identify its format
+ *               when the extension and MIME type give nothing
+ *   - fetch:    stream a cross-origin media file the page is not allowed to
+ *               read (Port "bevara-fetch"), so the pipeline can consume it
+ *               as a same-origin blob
+ *   - state:    remember what was taken over on each tab, for the popup badge
  */
-importScripts("common/formats.js");
+importScripts("common/formats.js", "common/registry.js");
+
+const R = globalThis.BevaraRegistry;
 
 const DEFAULTS = {
   enabled: true,
+  registry: R.DEFAULT_REGISTRY,
   disabledHosts: [],
   useWorker: true,
   progressive: true,
-  useWebcodec: false,
+  allowEncumbered: false,
+  webcodecEncoder: false,
   proxyCrossOrigin: true,
   verbose: false
 };
 
+/* The catalogue changes when someone publishes; an hour is short enough to
+ * pick that up and long enough that browsing costs no request. */
+const INDEX_TTL_MS = 60 * 60 * 1000;
+
 const tabState = new Map();
+let indexPromise = null;
+let bundlePromise = null;
+
+/* What scripts/sync-accessors.sh copied into accessors/, if anything. */
+function loadBundle() {
+  if (!bundlePromise) {
+    bundlePromise = fetch(chrome.runtime.getURL("accessors/bundled.json"))
+      .then(r => (r.ok ? r.json() : null))
+      .catch(() => null);
+  }
+  return bundlePromise;
+}
 
 function getSettings() {
   return chrome.storage.sync.get(DEFAULTS).then(s => Object.assign({}, DEFAULTS, s));
 }
 
+/* ------------------------------------------------------------- registry */
+
+async function readCachedIndex(registry) {
+  const { catalogue } = await chrome.storage.local.get({ catalogue: null });
+  if (!catalogue || catalogue.registry !== String(registry).replace(/\/+$/, "")) return null;
+  if (Date.now() - (catalogue.fetchedAt || 0) > INDEX_TTL_MS) return { stale: true, raw: catalogue };
+  return { stale: false, raw: catalogue };
+}
+
+async function loadIndex({ force } = {}) {
+  if (indexPromise && !force) return indexPromise;
+
+  indexPromise = (async () => {
+    const { registry } = await getSettings();
+    const cached = await readCachedIndex(registry);
+    if (cached && !cached.stale && !force) {
+      return { catalogue: cached.raw, fresh: true, error: null };
+    }
+    try {
+      const cat = await R.fetchIndex(registry);
+      const stored = Object.assign(R.toStorage(cat), { fetchedAt: Date.now() });
+      await chrome.storage.local.set({ catalogue: stored });
+      return { catalogue: stored, fresh: true, error: null };
+    } catch (e) {
+      /* An unreachable registry must not take the extension down: a stale
+       * catalogue still names the right modules, and their URLs are served
+       * from the browser's HTTP cache when it has them. */
+      if (cached) return { catalogue: cached.raw, fresh: false, error: String(e.message || e) };
+      return { catalogue: null, fresh: false, error: String(e.message || e) };
+    }
+  })();
+
+  const res = await indexPromise;
+  if (!res.catalogue) indexPromise = null; /* retry on the next page */
+  return res;
+}
+
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.sync.get(DEFAULTS).then(s => chrome.storage.sync.set(Object.assign({}, DEFAULTS, s)));
+  chrome.storage.sync.get(DEFAULTS)
+    .then(s => chrome.storage.sync.set(Object.assign({}, DEFAULTS, s)))
+    .then(() => loadIndex({ force: true }));
 });
+chrome.runtime.onStartup && chrome.runtime.onStartup.addListener(() => loadIndex());
+
+/* A new registry address invalidates the catalogue built from the old one. */
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "sync" && changes.registry) {
+    indexPromise = null;
+    chrome.storage.local.remove("catalogue").then(() => loadIndex({ force: true }));
+  }
+});
+
+/* ---------------------------------------------------------------- sniff */
 
 async function sniff(url) {
   const res = await fetch(url, { headers: { Range: "bytes=0-4095" }, credentials: "omit" });
@@ -38,6 +113,8 @@ async function sniff(url) {
   const f = BevaraFormats.fromMagic(bytes) || BevaraFormats.fromMime(contentType);
   return { format: f ? f.id : null, contentType, status: res.status };
 }
+
+/* ------------------------------------------------------------ media proxy */
 
 /* Runtime messages are JSON-serialised, so a media file is streamed back to
  * the content script over a Port as base64 chunks rather than as one giant
@@ -87,9 +164,11 @@ chrome.runtime.onConnect.addListener(port => {
   });
 });
 
+/* ------------------------------------------------------------ tab state */
+
 function updateBadge(tabId) {
   const entries = tabState.get(tabId) || [];
-  const n = entries.length;
+  const n = entries.filter(e => e.status !== "unavailable").length;
   chrome.action.setBadgeText({ tabId, text: n ? String(n) : "" });
   if (n) chrome.action.setBadgeBackgroundColor({ tabId, color: "#0b3d91" });
 }
@@ -100,6 +179,8 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
   if (info.status === "loading" && tabState.has(tabId)) { tabState.delete(tabId); updateBadge(tabId); }
 });
 
+/* ------------------------------------------------------------- messages */
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   const tabId = sender.tab ? sender.tab.id : null;
 
@@ -108,29 +189,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       case "settings":
         return getSettings();
 
+      case "index": {
+        const res = await loadIndex({ force: !!msg.force });
+        return Object.assign({}, res, { bundle: await loadBundle() });
+      }
+
       case "sniff":
         return sniff(msg.url);
 
       case "report": {
         if (tabId === null) return null;
         const list = tabState.get(tabId) || [];
-        list.push({ kind: msg.kind, format: msg.format, url: msg.url, status: msg.status, at: Date.now() });
+        list.push({
+          kind: msg.kind, format: msg.format, url: msg.url, status: msg.status,
+          detail: msg.detail || null, patents: msg.patents || null, at: Date.now()
+        });
         tabState.set(tabId, list);
         updateBadge(tabId);
         return null;
       }
 
-      case "reset": {
-        if (tabId === null) return null;
-        tabState.delete(tabId);
-        updateBadge(tabId);
-        return null;
-      }
-
-      case "tabState": {
-        const id = msg.tabId;
-        return tabState.get(id) || [];
-      }
+      case "tabState":
+        return tabState.get(msg.tabId) || [];
 
       default:
         throw new Error("unknown op " + msg.op);

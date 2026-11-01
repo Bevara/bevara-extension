@@ -7,6 +7,14 @@
  * extension APIs (settings, sniffing and CORS-free fetches via the background
  * worker, web-accessible accessors), which page scripts cannot reach.
  *
+ * The accessors are not bundled: the solver main modules, the side modules
+ * and the universal-tag scripts all come from a Bevara filter registry
+ * (registry.bevara.ddns.net by default), whose /accessors/ tree is served
+ * with `Access-Control-Allow-Origin: *` so that the page and its workers may
+ * load them directly. The background worker keeps the catalogue; this script
+ * checks against it that a format's whole pipeline is published before
+ * touching an element.
+ *
  * The pipeline itself runs in the page's main world (src/page/runtime.js):
  * that is where Workers, MediaSource and the customised built-in
  * <video is="universal-video_1"> have to live. The two halves talk through
@@ -25,10 +33,16 @@
   "use strict";
 
   const F = globalThis.BevaraFormats;
+  const R = globalThis.BevaraRegistry;
   const BASE = chrome.runtime.getURL("");
-  const ACCESSORS = BASE + "accessors/";
+
+  const LOCAL_ACCESSORS = BASE + "accessors/";
 
   let settings = null;
+  let catalogue = null;              /* registry catalogue, see common/registry.js */
+  let bundle = null;                 /* accessors/bundled.json, may be null */
+  const has = m => !!(catalogue && catalogue.modules.has(m));
+  const sourceFor = (kind, key) => R.sourceFor(catalogue, bundle, LOCAL_ACCESSORS, kind, key);
   let runtimeReady = false;
   const pendingJobs = [];
   const jobs = new Map();          /* id -> { el, fmt, url } */
@@ -119,12 +133,15 @@
   }
 
   /* Workers must be same-origin with the page, so the solver's JS wrapper is
-   * re-hosted as a page-origin blob: URL. The .wasm files stay on their
-   * chrome-extension:// URLs, which the worker may fetch directly. */
+   * fetched from the registry and re-hosted as a page-origin blob: URL. The
+   * .wasm files keep their registry URLs, which the worker fetches itself. */
   async function coreScriptUrl(core) {
     if (coreScriptUrls.has(core)) return coreScriptUrls.get(core);
-    const p = fetch(ACCESSORS + core + ".js")
-      .then(r => { if (!r.ok) throw new Error("missing accessor " + core + ".js"); return r.text(); })
+    const script = R.solverScript(catalogue, bundle, LOCAL_ACCESSORS, core);
+    if (!script) throw new Error("no source for " + core + ".js");
+    const src = script.url;
+    const p = fetch(src, { credentials: "omit" })
+      .then(r => { if (!r.ok) throw new Error("registry answered " + r.status + " for " + core + ".js"); return r.text(); })
       .then(text => {
         const u = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
         ownUrls.add(u);
@@ -140,7 +157,10 @@
   }
 
   function isCandidateUrl(url) {
-    return !!url && !/^(blob|data|javascript|about|chrome|moz-extension|chrome-extension):/i.test(url) && !ownUrls.has(url);
+    if (!url || ownUrls.has(url)) return false;
+    if (/^(blob|data|javascript|about|chrome|moz-extension|chrome-extension):/i.test(url)) return false;
+    /* never try to decode the registry's own files */
+    return !(catalogue && url.indexOf(catalogue.base) === 0);
   }
 
   function isSameOrigin(url) {
@@ -182,16 +202,63 @@
   }
 
   /* --------------------------------------------------------------- takeover */
+  /* Is the whole pipeline for this format published, and may it be used? */
+  function unavailableReason(fmt) {
+    if (!catalogue) return "registry catalogue unavailable";
+    const p = F.pipelineFor(fmt, has);
+    if (p.missing.length) return "not published on the registry: " + p.missing.join(", ");
+
+    /* A decoder whose format needs a patent licence, or whose status the
+     * registry still records as open, is not used on the user's behalf
+     * without them saying so. */
+    if (!settings.allowEncumbered) {
+      const restricted = R.restrictedIn(catalogue, [p.using].concat(p.with));
+      if (restricted.length) {
+        return "patent status " + restricted.map(r => r.module + ": " + r.status).join(", ")
+          + " (enable \"Use patent-encumbered accessors\" in the options to allow it)";
+      }
+    }
+
+    if (p.useWebcodec && !settings.webcodecEncoder) {
+      return p.notes.join("; ") + " (enable \"WebCodecs encoder\" in the options to try anyway)";
+    }
+    return null;
+  }
+
   async function takeover(el, fmt, url) {
     if (el.hasAttribute("data-bevara-id")) return;
+
+    const why = unavailableReason(fmt);
+    if (why) {
+      log("leaving", fmt.kind, fmt.id, url, "-", why);
+      rpc("report", { kind: fmt.kind, format: fmt.id, url, status: "unavailable", detail: why }).catch(() => { });
+      return;
+    }
+
     const id = String(nextId++);
     el.setAttribute("data-bevara-id", id);
     jobs.set(id, { el, fmt, url });
     log("taking over", fmt.kind, fmt.id, url);
-    rpc("report", { kind: fmt.kind, format: fmt.id, url, status: "started" }).catch(() => { });
+    const patents = R.patentStatus(catalogue, [fmt.using].concat(F.pipelineFor(fmt, has).with));
+    rpc("report", { kind: fmt.kind, format: fmt.id, url, status: "started", patents }).catch(() => { });
 
     try {
-      const pipeline = F.pipelineFor(fmt);
+      const pipeline = F.pipelineFor(fmt, has);
+
+      /* Each module separately: a bundled one comes from the extension (whose
+       * URLs the page's CSP does not police), the rest from the registry. */
+      const modules = {};
+      let allLocal = true;
+      for (const m of pipeline.with) {
+        const src = sourceFor("module", m);
+        modules[m] = src.url;
+        if (!src.local) allLocal = false;
+        if (src.skew) log(m, "bundled copy is stale, using the registry");
+      }
+      const coreWasm = sourceFor("module", pipeline.using);
+      if (!coreWasm.local) allLocal = false;
+      const tags = sourceFor("tag", "universal-tags_1.js");
+
       const job = {
         id,
         kind: fmt.kind,
@@ -200,12 +267,17 @@
         originalSrc: url,
         using: pipeline.using,
         with: pipeline.with,
-        accessors: ACCESSORS,
+        modules,
+        coreWasm: coreWasm.url,
+        /* the universal-video tag resolves its own modules from one
+         * directory, so it gets the local one only when everything is there */
+        accessors: allLocal ? LOCAL_ACCESSORS : catalogue.base,
+        tagsUrl: tags ? tags.url : null,
         coreScript: settings.useWorker ? await coreScriptUrl(pipeline.using) : null,
         options: {
           useWorker: settings.useWorker,
           progressive: settings.progressive,
-          useWebcodec: settings.useWebcodec,
+          useWebcodec: pipeline.useWebcodec,
           verbose: settings.verbose
         }
       };
@@ -358,6 +430,22 @@
     }
     if (!settings.enabled) return;
     if ((settings.disabledHosts || []).some(h => h && (location.hostname === h || location.hostname.endsWith("." + h)))) return;
+
+    try {
+      const res = await rpc("index");
+      catalogue = R.fromStorage(res.catalogue);
+      bundle = res.bundle && res.bundle.mode !== "none" ? res.bundle : null;
+      if (!catalogue) {
+        console.warn("[bevara] no accessor catalogue from " + settings.registry + " - " + (res.error || "unknown error"));
+        return;
+      }
+      if (!res.fresh) log("using a stale catalogue:", res.error);
+      log("catalogue:", catalogue.modules.size, "accessors;",
+        bundle ? Object.keys(bundle.modules).length + " module(s) bundled locally (" + bundle.mode + ")" : "nothing bundled");
+    } catch (e) {
+      console.warn("[bevara] could not reach the registry:", e.message);
+      return;
+    }
 
     document.documentElement.setAttribute("data-bevara-config", JSON.stringify({
       base: BASE,

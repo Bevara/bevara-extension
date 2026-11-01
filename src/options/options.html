@@ -28,10 +28,25 @@
   </fieldset>
 
   <fieldset>
+    <legend>Registry</legend>
+    <label><span style="flex:1">Accessors are fetched from
+      <input type="url" id="registry" style="width:100%;box-sizing:border-box" placeholder="https://registry.bevara.ddns.net">
+      <small>The Bevara filter registry serving <code>/accessors/</code>. Nothing is bundled with the extension; the catalogue is refreshed hourly.</small>
+    </span></label>
+    <p id="status" style="margin:6px 0 0;color:#666"></p>
+    <button id="refresh" type="button">Refresh catalogue</button>
+  </fieldset>
+
+  <fieldset>
+    <legend>Patents</legend>
+    <label><input type="checkbox" id="allowEncumbered"> <span>Use patent-encumbered accessors<small>Each accessor on the registry declares a patent status. By default only those marked <b>royalty-free</b> or <b>expired</b> are used; formats whose decoder is marked <b>licence-required</b> (HEVC, VVC, AVS2/3, EVC, AAC, H.264 encoding…) or <b>under-review</b> (AV1, VP9, DTS, AMR, LC3, SBC), and any with no declared status, are left to the browser and reported in the popup. Turning this on uses them anyway — practising those formats may require a licence from their patent holders in your jurisdiction.</small></span></label>
+  </fieldset>
+
+  <fieldset>
     <legend>Pipeline</legend>
     <label><input type="checkbox" id="useWorker"> <span>Decode images and audio in a Web Worker<small>Keeps the page responsive. Falls back to the main thread when the page's CSP forbids workers.</small></span></label>
     <label><input type="checkbox" id="progressive"> <span>Progressive video playback<small>Feeds transcoded segments to Media Source Extensions so playback starts before the transcode ends.</small></span></label>
-    <label><input type="checkbox" id="useWebcodec"> <span>Use WebCodecs when available<small>Lets the pipeline delegate H.264/AAC encoding to the platform (hardware) encoder.</small></span></label>
+    <label><input type="checkbox" id="webcodecEncoder"> <span>Allow the WebCodecs encoder<small>Video has to be re-encoded to H.264. When the registry publishes no WebAssembly H.264 encoder, this lets the pipeline fall back to the platform encoder built into the solver. It also enables the WebCodecs <em>decoder</em>, which can conflict with the wasm decoders — off by default, video formats are reported unavailable instead.</small></span></label>
   </fieldset>
 
   <fieldset>

@@ -1,8 +1,9 @@
 /* Page-world runtime.
  *
  * Executes the jobs prepared by the content script: instantiates the solver
- * (main module) with the selected accessors (side modules) and hands the
- * result back to the element. Adapted from the Showcase MutationObserver demo:
+ * (main module) with the selected accessors (side modules), both fetched
+ * from the Bevara registry named in the job, and hands the result back to
+ * the element. Adapted from the Showcase MutationObserver demo:
  *   - images and audio go through the generic pipeline below (worker when the
  *     page allows blob workers, main thread otherwise) and come back as a PNG
  *     (via canvas) or a WAV blob;
@@ -129,14 +130,14 @@
     return Object.assign({
       event: "init",
       module: {
-        dynamicLibraries: job.with.map(m => job.accessors + m + ".wasm"),
+        dynamicLibraries: job.with.map(m => (job.modules && job.modules[m]) || (job.accessors + m + ".wasm")),
         noInitialRun: true,
         noExitRuntime: true
       },
-      wasmBinaryFile: job.accessors + job.using + ".wasm",
+      wasmBinaryFile: job.coreWasm || (job.accessors + job.using + ".wasm"),
       src: job.src,
       dst: "out." + out,
-      useWebcodec: false,
+      useWebcodec: !!job.options.useWebcodec,
       print: config.verbose ? "1" : null,
       printErr: config.verbose ? "1" : null,
       noCleanupOnExit: (out === "rgb" || out === "rgba") ? "" : null
@@ -274,7 +275,7 @@
     const el = elementFor(job.id);
     if (!el) throw new Error("element vanished");
 
-    if (!tagsLoaded) tagsLoaded = loadScript(job.accessors + "universal-tags_1.js");
+    if (!tagsLoaded) tagsLoaded = loadScript(job.tagsUrl || (job.accessors + "universal-tags_1.js"));
     try {
       await tagsLoaded;
       if (!customElements.get("universal-video_1")) throw new Error("universal-video_1 not defined");

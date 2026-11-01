@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Bevara Universal Media",
-  "version": "0.1.0",
-  "description": "Plays images, audio and video your browser cannot decode natively, by transcoding them on the fly with WebAssembly accessors.",
+  "version": "2.1.0",
+  "description": "Plays the image, audio and video formats your browser can't, decoding them with WebAssembly accessors from a Bevara filter registry.",
   "minimum_chrome_version": "102",
   "permissions": [
     "storage"
@@ -20,6 +20,7 @@
       ],
       "js": [
         "src/common/formats.js",
+        "src/common/registry.js",
         "src/content/bootstrap.js"
       ],
       "run_at": "document_start",

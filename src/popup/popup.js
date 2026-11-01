@@ -17,12 +17,30 @@ function render(entries) {
     const li = document.createElement("li");
     const kind = document.createElement("span"); kind.className = "kind"; kind.textContent = e.kind + " · " + e.format;
     const url = document.createElement("span"); url.className = "url"; url.title = e.url; url.textContent = e.url;
-    const st = document.createElement("span"); st.className = "st " + e.status; st.textContent = e.status;
+    const st = document.createElement("span"); st.className = "st " + e.status;
+    st.textContent = e.status === "unavailable" ? "unavailable" : (e.detail || e.status);
+    if (e.detail) st.title = e.detail;
+    if (e.patents && e.patents !== "royalty-free" && e.patents !== "expired") {
+      kind.textContent += " ⚠";
+      kind.title = "patent status reported by the registry: " + e.patents;
+    }
     li.append(kind, url, st);
     ul.appendChild(li);
   }
   listEl.replaceChildren(ul);
 }
+
+chrome.runtime.sendMessage({ op: "index" }, res => {
+  const line = document.getElementById("registry");
+  if (!res || !res.ok || !res.data.catalogue) {
+    line.textContent = "registry unreachable";
+    line.className = "reg bad";
+    return;
+  }
+  const c = res.data.catalogue;
+  line.textContent = c.registry.replace(/^https?:\/\//, "") + " · " + c.modules.length + " accessors";
+  line.className = "reg" + (res.data.fresh ? "" : " stale");
+});
 
 chrome.tabs.query({ active: true, currentWindow: true }).then(async ([tab]) => {
   if (!tab) return;
