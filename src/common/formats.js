@@ -338,12 +338,15 @@
    * `has` is a predicate on module names; passing none assumes everything is
    * available, which is what the offline tests want.
    */
-  function pipelineFor(f, has) {
+  /* `runtimeOf` maps the solver the table names to the one the registry
+   * publishes (BevaraRegistry.runtimeFor). */
+  function pipelineFor(f, has, runtimeOf) {
     const available = has || (() => true);
     const list = f.with.slice();
-    const result = { using: f.using, with: list, useWebcodec: false, missing: [], notes: [] };
+    const using = runtimeOf ? runtimeOf(f.using) : f.using;
+    const result = { using, with: list, useWebcodec: false, missing: [], notes: [] };
 
-    if (!available(f.using)) result.missing.push(f.using);
+    if (!available(using)) result.missing.push(using);
 
     if (f.kind === VIDEO) {
       if (list.indexOf(VIDEO_MUX) === -1) list.push(VIDEO_MUX);

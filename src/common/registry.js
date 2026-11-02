@@ -96,6 +96,19 @@
     };
   }
 
+  /* The solver to load for one the format table names. A solver's name
+   * carries its version (mm_solver_1.0.2) and the index lists the latest
+   * release only, so a name the table pins (mm_solver_1.0.1) stands for the
+   * same solver as the registry publishes it now. */
+  const familyOf = name => String(name).replace(/_\d+(?:\.\d+\.\d+)?$/, "");
+  function runtimeFor(cat, name) {
+    if (cat.modules.has(name)) return name;
+    for (const m of cat.modules.values()) {
+      if (m.kind === "runtime" && familyOf(m.module) === familyOf(name)) return m.module;
+    }
+    return name;
+  }
+
   /* Names the registry does not publish - the caller refuses the format and
    * says why, rather than letting the pipeline 404 halfway through. */
   function missingFrom(cat, names) {
@@ -181,7 +194,7 @@
 
   root.BevaraRegistry = {
     DEFAULT_REGISTRY, accessorsBase, normalise, fetchIndex, toStorage, fromStorage,
-    missingFrom, patentStatus, sourceFor, solverScript,
+    missingFrom, runtimeFor, patentStatus, sourceFor, solverScript,
     UNRESTRICTED, statusOf, isRestricted, restrictedIn
   };
 })(typeof globalThis !== "undefined" ? globalThis : self);

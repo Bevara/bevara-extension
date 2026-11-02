@@ -42,6 +42,7 @@
   let catalogue = null;              /* registry catalogue, see common/registry.js */
   let bundle = null;                 /* accessors/bundled.json, may be null */
   const has = m => !!(catalogue && catalogue.modules.has(m));
+  const runtimeOf = m => (catalogue ? R.runtimeFor(catalogue, m) : m);
   const sourceFor = (kind, key) => R.sourceFor(catalogue, bundle, LOCAL_ACCESSORS, kind, key);
   let runtimeReady = false;
   const pendingJobs = [];
@@ -205,7 +206,7 @@
   /* Is the whole pipeline for this format published, and may it be used? */
   function unavailableReason(fmt) {
     if (!catalogue) return "registry catalogue unavailable";
-    const p = F.pipelineFor(fmt, has);
+    const p = F.pipelineFor(fmt, has, runtimeOf);
     if (p.missing.length) return "not published on the registry: " + p.missing.join(", ");
 
     /* A decoder whose format needs a patent licence, or whose status the
@@ -239,11 +240,12 @@
     el.setAttribute("data-bevara-id", id);
     jobs.set(id, { el, fmt, url });
     log("taking over", fmt.kind, fmt.id, url);
-    const patents = R.patentStatus(catalogue, [fmt.using].concat(F.pipelineFor(fmt, has).with));
+    const planned = F.pipelineFor(fmt, has, runtimeOf);
+    const patents = R.patentStatus(catalogue, [planned.using].concat(planned.with));
     rpc("report", { kind: fmt.kind, format: fmt.id, url, status: "started", patents }).catch(() => { });
 
     try {
-      const pipeline = F.pipelineFor(fmt, has);
+      const pipeline = F.pipelineFor(fmt, has, runtimeOf);
 
       /* Each module separately: a bundled one comes from the extension (whose
        * URLs the page's CSP does not police), the rest from the registry. */
