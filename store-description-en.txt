@@ -113,3 +113,32 @@ DATA USAGE
 Declare "no data collected" in every category and tick the three certifications.
 This is accurate: the extension transmits nothing about the user or the pages
 visited.
+
+================================================================================
+REMOTE CODE — what a reviewer will ask about
+================================================================================
+This extension downloads WebAssembly decoders from a Bevara filter registry at
+run time. Manifest V3 counts WebAssembly as remotely hosted code, so expect the
+question and answer it in the submission notes:
+
+  The extension ships the two solver runtimes and the custom-element scripts in
+  the package. What it fetches at run time are the per-format decoders — one
+  small WebAssembly module per media format — from
+  https://registry.bevara.ddns.net, a first-party registry operated by the
+  publisher.
+
+  This is the point of the product rather than a convenience: the set of
+  formats a browser cannot read is open-ended, the decoders together weigh far
+  more than a reasonable package, and a format published to the registry has to
+  become playable without shipping a new extension version. Every module is
+  published with its licence, its patent status and an Ed25519 signature
+  recorded in an append-only transparency log, and the catalogue the extension
+  reads lists the expected version of each.
+
+  No code is fetched from a third party, none is user-supplied, and none is
+  evaluated as script: the modules are instantiated as WebAssembly by the
+  bundled solver.
+
+If the item is refused on that ground, the fallback is a fully packaged build:
+`scripts/sync-accessors.sh --all && scripts/package.sh` (~10 MB), which fetches
+nothing executable at run time and keeps the registry only as a catalogue.

@@ -138,26 +138,22 @@ and to the media URL the page already references.
 
 ---
 
-## Remote code — settle this before uploading
+## Remote code — decided: the registry stays
 
-Manifest V3 requires that all code an extension runs be contained in its
-package; remotely hosted code, **WebAssembly included**, is not allowed.
+The extension fetches its per-format decoders from the registry at run time.
+Manifest V3 counts WebAssembly as remotely hosted code, so a reviewer may well
+raise it. That is accepted deliberately: fetching the filters is the product,
+not a shortcut. An extension that packaged every decoder could not gain a
+format without being resubmitted, which is precisely what the registry exists
+to avoid.
 
-In `--glue` and `--none` modes this extension downloads `.wasm` decoders from
-`registry.bevara.ddns.net` and instantiates them. That is remotely hosted code,
-and a reviewer who notices it can reject the item.
+Ship the `--glue` build: the two solvers and the tag scripts travel in the
+package, the decoders come from the registry. `store-description-en.txt`
+carries the wording to put in the submission notes.
 
-The safe build is `scripts/sync-accessors.sh --all`: every decoder travels in
-the package (~7.6 MB), the registry is used only for its catalogue, and nothing
-executable is fetched at run time. To be fully compliant the registry fallback
-for modules absent from the bundle should also be disabled in that build —
-otherwise the path still exists even if it is rarely taken.
-
-The trade-off is real: `--all` loses the property that a decoder published to
-the registry becomes playable without an extension update. That is a product
-decision, not a technical one.
-
----
+If the item is refused on that ground, `scripts/sync-accessors.sh --all`
+produces a package that fetches nothing executable (~10 MB) — a fallback, not
+the intent.
 
 ## What changed since the published version
 
