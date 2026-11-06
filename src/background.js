@@ -24,7 +24,7 @@ const DEFAULTS = {
   useWorker: true,
   progressive: true,
   allowEncumbered: false,
-  webcodecEncoder: false,
+  webcodecEncoder: true,
   proxyCrossOrigin: true,
   verbose: false
 };

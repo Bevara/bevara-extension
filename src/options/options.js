@@ -1,6 +1,6 @@
 const DEFAULTS = {
   enabled: true, registry: "https://registry.bevara.ddns.net", disabledHosts: [],
-  useWorker: true, progressive: true, allowEncumbered: false, webcodecEncoder: false,
+  useWorker: true, progressive: true, allowEncumbered: false, webcodecEncoder: true,
   proxyCrossOrigin: true, verbose: false
 };
 const BOOLS = ["enabled", "useWorker", "progressive", "allowEncumbered", "webcodecEncoder", "proxyCrossOrigin", "verbose"];

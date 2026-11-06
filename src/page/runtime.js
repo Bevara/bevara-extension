@@ -138,6 +138,12 @@
       src: job.src,
       dst: "out." + out,
       useWebcodec: !!job.options.useWebcodec,
+      /* Only the encoder. wcdec puts itself forward for any track the
+       * resolver offers it, including codecs WebCodecs does not know: on
+       * Theora it fails to initialise without handing back to the wasm
+       * decoder named in "with", and the session never produces a usable
+       * track. The solver's webcodecRole lets us take the encoder alone. */
+      webcodecRole: "enc",
       print: config.verbose ? "1" : null,
       printErr: config.verbose ? "1" : null,
       noCleanupOnExit: (out === "rgb" || out === "rgba") ? "" : null
@@ -226,7 +232,9 @@
     upgraded.setAttribute("script-directory", job.accessors);
     upgraded.setAttribute("src", job.src);
     if (job.options.progressive) upgraded.setAttribute("progressive", "");
-    if (job.options.useWebcodec) upgraded.setAttribute("use-webcodec", "");
+    /* "enc", not "": the empty value means role "both", which registers the
+     * WebCodecs decoder as well - see initMessage above. */
+    if (job.options.useWebcodec) upgraded.setAttribute("use-webcodec", "enc");
     /* no use-worker here: the tag would build the worker from the extension
      * URL, which is cross-origin for the page */
     el.replaceWith(upgraded);
@@ -262,7 +270,23 @@
     let el = elementFor(job.id);
     if (!el) throw new Error("element vanished");
     if (el.getAttribute("is")) el = downgrade(el);
-    const mp4 = await runGeneric(job, "mp4", { mime_type: "video/mp4", transcode: ["c=avc"] });
+    /* Audio handling differs by route.
+     *
+     * The wasm route re-encodes to Opus when libopusenc travels with the
+     * pipeline, giving a complete MP4.
+     *
+     * The WebCodecs route takes video only. Measured against mm_solver
+     * 1.0.2: "c=avc" alone completes and writes an avc1 track, while adding
+     * either "c=aac" (wcenc never connects the audio PID) or "c=opus" (no
+     * error, but the session never ends) hangs the transcode. The audio is
+     * therefore dropped rather than risking a pipeline that never returns -
+     * the options page says so. */
+    const audio = job.options.useWebcodec ? null
+      : (job.with.indexOf("libopusenc_1") !== -1 ? "c=opus" : null);
+    const mp4 = await runGeneric(job, "mp4", {
+      mime_type: "video/mp4",
+      transcode: audio ? ["c=avc", audio] : ["c=avc"]
+    });
     const wasPlaying = el.autoplay || !el.paused;
     el.removeAttribute("progressive");
     el.setAttribute("src", URL.createObjectURL(mp4));

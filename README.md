@@ -110,11 +110,13 @@ patent holders in your jurisdiction. The split on the registry today:
 
 | | formats |
 |---|---|
-| used by default (42) | JPEG XL, WebP, JPEG 2000, GIF, PNG, JPEG, TIFF, BMP, JPEG-LS, JPEG XR, FLIF, DDS, JBIG, ICNS, MNG, PSD, XCF, PGF, PCX, TGA, SGI, PNM, XBM, camera RAW, retro, MP3, FLAC, Vorbis, Opus, Speex, AC-3, ALAC, AIFF, WavPack, Musepack, TTA, GSM, G.711/G.72x, iLBC, Codec 2, MIDI, tracker |
-| behind the option (19) | AVIF, HEIF, BPG, DTS, AMR, LC3, SBC, and every video format — all of them need `libx264` (H.264 encoding, licence-required) to produce a stream the browser plays |
+| used by default (46) | the 42 image and audio formats listed below, plus Theora, MPEG-2, Dirac and AVI — every video format whose *decoder* is royalty-free |
+| behind the option (15) | AVIF, HEIF, BPG, DTS, AMR, LC3, SBC, and the video formats whose decoder is encumbered: HEVC, VVC, VP9, AV1, AVS2, AVS3, EVC, H.264 |
 
-Note that the encoder tail drags the whole of video behind the option: even
-Theora, royalty-free itself, is re-encoded to H.264 to be played.
+Video still has to be re-encoded to H.264 to play, and the only WebAssembly
+encoder for that is `libx264`, which is `licence-required`. Rather than put the
+whole of video behind the option, the pipeline falls back to the H.264 encoder
+the browser already ships, through WebCodecs — see the next section.
 
 ## The registry
 
