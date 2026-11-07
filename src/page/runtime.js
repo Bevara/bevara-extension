@@ -270,18 +270,24 @@
     let el = elementFor(job.id);
     if (!el) throw new Error("element vanished");
     if (el.getAttribute("is")) el = downgrade(el);
-    /* Audio handling differs by route.
+    /* Both routes now produce a complete MP4, audio included.
      *
      * The wasm route re-encodes to Opus when libopusenc travels with the
-     * pipeline, giving a complete MP4.
+     * pipeline.
      *
-     * The WebCodecs route takes video only. Measured against mm_solver
-     * 1.0.2: "c=avc" alone completes and writes an avc1 track, while adding
-     * either "c=aac" (wcenc never connects the audio PID) or "c=opus" (no
-     * error, but the session never ends) hangs the transcode. The audio is
-     * therefore dropped rather than risking a pipeline that never returns -
-     * the options page says so. */
-    const audio = job.options.useWebcodec ? null
+     * The WebCodecs route used to take video only: against mm_solver 1.0.2,
+     * "c=avc" alone completed but adding "c=aac" or "c=opus" hung the
+     * session. The cause was in the solver, not here - GPAC resolves a link
+     * through filter *registers*, so with two instances of one register
+     * ("c=avc" and "c=aac" both being wcenc) the audio PID solved its chain
+     * against the video instance and was then dropped, and a wcenc flush in
+     * flight was invisible to the session's idle check. Both are fixed in
+     * mm_solver 1.0.4, where a 33 s Theora+Vorbis Ogg converts frame-exact
+     * (813 video frames in, 813 out, 33.0 s of AAC). AAC is asked for rather
+     * than Opus only because every browser shipping an AudioEncoder supports
+     * it in MP4; the encoding is the browser's own, so neither choice pulls
+     * in a licence-bearing filter. */
+    const audio = job.options.useWebcodec ? "c=aac"
       : (job.with.indexOf("libopusenc_1") !== -1 ? "c=opus" : null);
     const mp4 = await runGeneric(job, "mp4", {
       mime_type: "video/mp4",

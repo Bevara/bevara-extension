@@ -46,7 +46,7 @@
     <legend>Pipeline</legend>
     <label><input type="checkbox" id="useWorker"> <span>Decode images and audio in a Web Worker<small>Keeps the page responsive. Falls back to the main thread when the page's CSP forbids workers.</small></span></label>
     <label><input type="checkbox" id="progressive"> <span>Progressive video playback<small>Feeds transcoded segments to Media Source Extensions so playback starts before the transcode ends.</small></span></label>
-    <label><input type="checkbox" id="webcodecEncoder"> <span>Allow the WebCodecs encoder<small>On by default. Video has to be re-encoded to H.264; rather than download a patent-encumbered encoder, the pipeline uses the one your browser already ships. Two limits for now: the result has <strong>no sound</strong>, and a <strong>long source comes out truncated</strong> — the session is cut short while the encoder is still working, so only the first seconds are kept. Short clips are complete. Turn this off to leave such video to the browser instead.</small></span></label>
+    <label><input type="checkbox" id="webcodecEncoder"> <span>Allow the WebCodecs encoder<small>On by default. Video has to be re-encoded to H.264; rather than download a patent-encumbered encoder, the pipeline uses the one your browser already ships. Sound is kept and the whole source is converted, however long it is. Turn this off to leave such video to the browser instead.</small></span></label>
   </fieldset>
 
   <fieldset>

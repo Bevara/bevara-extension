@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bevara Universal Media",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "Plays the image, audio and video formats your browser can't, decoding them with WebAssembly accessors from a Bevara filter registry.",
   "minimum_chrome_version": "102",
   "permissions": [

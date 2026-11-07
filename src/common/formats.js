@@ -16,8 +16,11 @@
  *             Images have no canPlayType, so this is how the observer decides
  *             whether to let the browser try first (and take over on `error`)
  *             or to step in immediately.
- *   using     main module (solver) - mm_solver_minimal_1.0.1 for images/audio,
- *             mm_solver_1.0.1 for anything that needs the video encoders.
+ *   using     main module (solver) - "mm_solver_minimal" for images/audio,
+ *             "mm_solver" for anything that needs the video encoders. These
+ *             are families, not versions: registry.js resolves each to the
+ *             release the registry currently publishes (see runtimeFor), so
+ *             a new solver reaches installed extensions without a release.
  *   with      side modules (accessors), mirrors the Showcase demos.
  *   magic     byte signatures at offsets, used by the background sniffer.
  *
