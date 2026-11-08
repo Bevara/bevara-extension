@@ -114,8 +114,32 @@ const browser = await puppeteer.launch({
 
 const page = await browser.newPage();
 const consoleErrors = [];
-page.on('pageerror', e => consoleErrors.push('pageerror: ' + String(e.message).slice(0, 200)));
-page.on('requestfailed', r => consoleErrors.push('request failed: ' + r.url().replace(base, '') + ' ' + (r.failure()?.errorText || '')));
+const consoleAll = [];
+const watch = (p, tag) => {
+  p.on('pageerror', e => consoleErrors.push(tag + ' pageerror: ' + String(e.message).slice(0, 200)));
+  p.on('requestfailed', r => consoleErrors.push(tag + ' request failed: ' + r.url().replace(base, '') + ' ' + (r.failure()?.errorText || '')));
+  p.on('console', m => {
+    const txt = m.text().slice(0, 200);
+    consoleAll.push(m.type()[0] + ' ' + txt);
+    if (m.type() === 'error') consoleErrors.push(tag + ' console: ' + txt);
+  });
+};
+watch(page, 'mixed');
+
+/* A run that produces no report at all says nothing about why. Ask the page
+ * what it managed to set up, so the log names the cause instead of repeating
+ * "reported nothing" once per sample. */
+const diagnose = (p) => p.evaluate(() => ({
+  formats: typeof globalThis.BevaraFormats,
+  registry: typeof globalThis.BevaraRegistry,
+  runtimeScript: !!document.querySelector('script[src*="runtime.js"]'),
+  reports: (window.__BEVARA_REPORTS__ || []).length,
+  mediaElements: document.querySelectorAll('img,audio,video,canvas').length,
+  takenOver: document.querySelectorAll('[data-bevara-id]').length,
+  harnessError: (document.querySelector('pre') || {}).textContent?.slice(0, 300) || null,
+  webgl: (() => { try { return !!document.createElement('canvas').getContext('webgl'); } catch (e) { return 'threw: ' + e.message; } })(),
+  canPlayOgg: (() => { try { return document.createElement('video').canPlayType('video/ogg'); } catch (e) { return 'threw'; } })()
+}));
 
 let reports = [];
 try {
@@ -141,6 +165,12 @@ try {
     await new Promise(r => setTimeout(r, 1000));
   }
   reports = await page.evaluate(() => window.__BEVARA_REPORTS__ || []);
+  if (!reports.length) {
+    const d = await diagnose(page);
+    console.error('the mixed page produced no report. State of the page:');
+    console.error(JSON.stringify(d, null, 1));
+    if (consoleAll.length) console.error('console:\n  ' + consoleAll.slice(0, 25).join('\n  '));
+  }
 } catch (e) {
   console.error('bench did not run: ' + (e && e.message || e));
 }
@@ -149,9 +179,10 @@ await page.close();
 /* One page per sample: a hang on one format then cannot swallow the others,
  * and each gets its own line in the report. */
 const perSample = Number(flag('sample-timeout', 90000));
+let firstDiag = null;
 for (const [src, tag] of (argv.includes('--mixed-only') ? [] : SAMPLES)) {
   const p2 = await browser.newPage();
-  p2.on('pageerror', e => consoleErrors.push(src + ' pageerror: ' + String(e.message).slice(0, 160)));
+  watch(p2, src);
   try {
     await p2.goto(`${base}/test/single.html?src=${encodeURIComponent(src)}&tag=${tag}${QUERY ? '&' + QUERY : ''}`,
       { waitUntil: 'load', timeout: 60000 });
@@ -167,6 +198,12 @@ for (const [src, tag] of (argv.includes('--mixed-only') ? [] : SAMPLES)) {
       await new Promise(r => setTimeout(r, 1000));
     }
     const got = await p2.evaluate(() => window.__BEVARA_REPORTS__ || []);
+    if (!got.length && !firstDiag) {
+      firstDiag = await diagnose(p2);
+      console.error(`${src}: no report. State of the page:`);
+      console.error(JSON.stringify(firstDiag, null, 1));
+      if (consoleAll.length) console.error('console:\n  ' + consoleAll.slice(-25).join('\n  '));
+    }
     reports = reports.concat(got.length ? got : [{ kind: tag, format: '?', url: src, status: 'started', detail: 'the bench reported nothing for this sample' }]);
   } catch (e) {
     reports.push({ kind: tag, format: '?', url: src, status: 'error', detail: String(e && e.message || e).slice(0, 160) });
