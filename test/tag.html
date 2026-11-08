@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Bevara extension - raw universal tag</title>
+  <script>
+    const dir = new URLSearchParams(location.search).get("dir") || "https://registry.bevara.ddns.net/accessors/";
+    document.write('<scr' + 'ipt src="' + dir + 'universal-tags_1.js"></scr' + 'ipt>');
+  </script>
+</head>
+<body>
+  <!-- ?src=media/x&with=a;b;c[&progressive][&webcodec][&worker] : the universal-video tag on its own, without the observer -->
+  <script>
+    const q = new URLSearchParams(location.search);
+    const v = document.createElement("video", { is: "universal-video_1" });
+    v.id = "el";
+    v.setAttribute("is", "universal-video_1");
+    v.setAttribute("using", q.get("using") || "mm_solver_1.0.1");
+    v.setAttribute("with", q.get("with") || "");
+    v.setAttribute("script-directory", dir);
+    v.setAttribute("src", new URL(q.get("src"), location.href).href);
+    v.setAttribute("controls", "");
+    if (q.has("progressive")) v.setAttribute("progressive", "");
+    if (q.has("webcodec")) v.setAttribute("use-webcodec", "");
+    if (q.has("worker")) v.setAttribute("use-worker", "");
+    document.body.appendChild(v);
+    window.__t0 = performance.now();
+    v.decodingPromise.then(r => console.log("[tag] resolved", r, ((performance.now() - __t0) / 1000).toFixed(1) + "s"), e => console.log("[tag] rejected", e));
+  </script>
+</body>
+</html>

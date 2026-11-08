@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Bevara extension - single element</title>
+  <script src="../src/common/formats.js"></script>
+  <script src="../src/common/registry.js"></script>
+  <script src="harness.js"></script>
+</head>
+<body>
+  <!-- ?src=media/x.ext&tag=video|audio|img[&force] -->
+  <script>
+    const q = new URLSearchParams(location.search);
+    const el = document.createElement(q.get("tag") || "video");
+    el.id = "el";
+    el.src = q.get("src");
+    if (el.tagName !== "IMG") el.controls = true;
+    document.body.appendChild(el);
+  </script>
+</body>
+</html>
