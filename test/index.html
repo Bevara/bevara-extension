@@ -49,7 +49,11 @@
 
   <section>
     <h2>7. Ogg Theora — lecture progressive</h2>
-    <video id="theora" src="media/trailer.ogg" controls></video>
+    <!-- The Blender trailer is 28 MB and was a symlink into another project,
+         ignored by .gitignore: for anyone but its author this element was a
+         broken link. The Showcase publishes the same file with CORS, so use
+         that copy rather than carrying 28 MB here. -->
+    <video id="theora" src="https://bevara.github.io/Showcase/test_sequences/trailer_1080p.ogg" controls></video>
   </section>
 
   <section>

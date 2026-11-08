@@ -1,6 +1,5 @@
 node_modules/
 *.zip
-test/media/trailer.ogg
 dist/
 accessors/*
 !accessors/.gitkeep
