@@ -1,0 +1,16 @@
+{
+  "comment": [
+    "Samples that do not decode today. They are reported as skipped, with the",
+    "reason, so this job turns red on a NEW break rather than being red from",
+    "the day it was created - and so the list cannot quietly rot: a sample",
+    "listed here that starts passing is reported as a failure too, which is",
+    "the signal to delete its entry.",
+    "Keyed by the tail of the sample URL."
+  ],
+  "known": {
+    "mpeg1_short.mpg": "pipeline ended without output (exit 1). The same MPEG-2 content decodes through the player (the Showcase mpeg2 demo passes), so this is the extension's route, not the codec. Not yet diagnosed.",
+    "mpeg2_audio.mpg": "pipeline ended without output (exit 1) - same as mpeg1_short.mpg.",
+    "mpeg2_centaur.mpg": "pipeline ended without output (exit 1) - same as mpeg1_short.mpg.",
+    "mpeg2_noaudio.m2v": "pipeline ended without output (exit 1). A video-only MPEG-2 elementary stream also hits the known progressive-playback limitation documented in README.md, where no segment is ever emitted without an audio track."
+  }
+}
