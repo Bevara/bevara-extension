@@ -82,7 +82,8 @@ const SAMPLES = [
   ['media/testcard.psd',     'img'],
   ['media/canyon.ac3',       'audio'],
   ['media/median.ogg',       'audio'],
-  ['media/trailer.ogg',      'video'],
+  /* published by the Showcase: 28 MB, not carried in this repository */
+  ['https://bevara.github.io/Showcase/test_sequences/trailer_1080p.ogg', 'video'],
   ['media/theora_short.ogv', 'video'],
   ['media/dirac.drc',        'video'],
   ['media/mjpeg.avi',        'video'],
