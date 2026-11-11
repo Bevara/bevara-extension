@@ -103,6 +103,12 @@ console.log('bench: ' + url + '\n');
 const puppeteer = (await import('puppeteer')).default;
 const browser = await puppeteer.launch({
   executablePath: process.env.CHROME_BIN || undefined,
+  /* The in-page wait for a sample can legitimately outlast puppeteer's default
+   * 180 s protocol timeout: the Blender trailer is 28 MB and the agent is slow.
+   * That showed up as "Runtime.callFunctionOn timed out", which is about the
+   * harness, not the decode. Give the protocol more room than the longest
+   * per-sample wait. */
+  protocolTimeout: Number(flag('sample-timeout', 90000)) + 60000,
   args: [
     '--no-sandbox', '--disable-gpu',
     /* 64 MB of /dev/shm in a pod breaks fetches of a few hundred KB, which is
