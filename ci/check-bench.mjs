@@ -83,7 +83,7 @@ const SAMPLES = [
   ['media/canyon.ac3',       'audio'],
   ['media/median.ogg',       'audio'],
   /* published by the Showcase: 28 MB, not carried in this repository */
-  ['https://bevara.github.io/Showcase/test_sequences/trailer_1080p.ogg', 'video'],
+  ['https://bevara.github.io/Showcase/test_sequences/trailer_1080p.ogg', 'video', 300000],  /* 33 s of 1080p: give it 5 min */
   ['media/theora_short.ogv', 'video'],
   ['media/dirac.drc',        'video'],
   ['media/mjpeg.avi',        'video'],
@@ -103,12 +103,13 @@ console.log('bench: ' + url + '\n');
 const puppeteer = (await import('puppeteer')).default;
 const browser = await puppeteer.launch({
   executablePath: process.env.CHROME_BIN || undefined,
-  /* The in-page wait for a sample can legitimately outlast puppeteer's default
-   * 180 s protocol timeout: the Blender trailer is 28 MB and the agent is slow.
-   * That showed up as "Runtime.callFunctionOn timed out", which is about the
-   * harness, not the decode. Give the protocol more room than the longest
-   * per-sample wait. */
-  protocolTimeout: Number(flag('sample-timeout', 90000)) + 60000,
+  /* A page busy decoding cannot answer the protocol, and puppeteer then throws
+   * "Runtime.callFunctionOn timed out" - a statement about the harness, not
+   * about the decode. Sizing this from the per-sample timeout was not enough:
+   * the 28 MB trailer keeps the agent's page busy for longer than that, in the
+   * mixed page as well. Make it long enough that the bound which fires is
+   * always one of ours, which names the sample. */
+  protocolTimeout: 20 * 60 * 1000,
   args: [
     '--no-sandbox', '--disable-gpu',
     /* 64 MB of /dev/shm in a pod breaks fetches of a few hundred KB, which is
@@ -187,13 +188,13 @@ await page.close();
  * and each gets its own line in the report. */
 const perSample = Number(flag('sample-timeout', 90000));
 let firstDiag = null;
-for (const [src, tag] of (argv.includes('--mixed-only') ? [] : SAMPLES)) {
+for (const [src, tag, ownTimeout] of (argv.includes('--mixed-only') ? [] : SAMPLES)) {
   const p2 = await browser.newPage();
   watch(p2, src);
   try {
     await p2.goto(`${base}/test/single.html?src=${encodeURIComponent(src)}&tag=${tag}${QUERY ? '&' + QUERY : ''}`,
       { waitUntil: 'load', timeout: 60000 });
-    const deadline = Date.now() + perSample;
+    const deadline = Date.now() + (ownTimeout || perSample);
     while (Date.now() < deadline) {
       const st = await p2.evaluate(() => {
         const r = window.__BEVARA_REPORTS__ || [];
