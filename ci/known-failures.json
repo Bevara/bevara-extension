@@ -12,5 +12,12 @@
     "mpeg2_audio.mpg": "pipeline ended without output (exit 1) - same as mpeg1_short.mpg.",
     "mpeg2_centaur.mpg": "pipeline ended without output (exit 1) - same as mpeg1_short.mpg.",
     "mpeg2_noaudio.m2v": "pipeline ended without output (exit 1). A video-only MPEG-2 elementary stream also hits the known progressive-playback limitation documented in README.md, where no segment is ever emitted without an audio track."
+  },
+  "ci": {
+    "comment": "What the Jenkins agent cannot do at all. Applies only there (JENKINS_URL, BUILD_NUMBER or CI set, or --ci); on a laptop everything runs. Each use is printed in the log and reported as skipped.",
+    "skipMixedPage": "test/index.html stacks every element on one page, the 28 MB 1080p trailer among them. On the 2-CPU agent that page stops answering the browser protocol for more than 20 minutes (build #7 took 44 minutes on it), so it is not run there. Nothing is lost: each sample is exercised on its own page right after.",
+    "skipSamples": {
+      "trailer_1080p.ogg": "33 s of 1080p Theora, 28 MB. On the agent the page stops answering for more than 20 minutes on it (builds #5 to #7); on a laptop it decodes in about 35 s through WebCodecs, where it is the long audio+video case this bench exists for. Measured, not diagnosed: whether the agent is merely slow or actually stuck is not known."
+    }
   }
 }

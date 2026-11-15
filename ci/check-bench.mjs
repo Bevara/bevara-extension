@@ -149,8 +149,20 @@ const diagnose = (p) => p.evaluate(() => ({
   canPlayOgg: (() => { try { return document.createElement('video').canPlayType('video/ogg'); } catch (e) { return 'threw'; } })()
 }));
 
+/* The baseline file also says what this build agent cannot do at all (its
+ * "ci" section), which only applies there - on a laptop everything runs. It
+ * is data, in the repository, and every use of it is printed. */
+const IN_CI = argv.includes('--ci') || !!(process.env.JENKINS_URL || process.env.BUILD_NUMBER || process.env.CI);
+let BASELINE = {};
+try { BASELINE = JSON.parse(await readFile(join(ROOT, 'ci', 'known-failures.json'), 'utf8')); } catch {}
+const CI_RULES = IN_CI ? (BASELINE.ci || {}) : {};
+const ciSkipped = [];
+
 let reports = [];
-try {
+if (CI_RULES.skipMixedPage) {
+  console.log('  skip the mixed page (on the agent): ' + CI_RULES.skipMixedPage + '\n');
+  ciSkipped.push({ n: 'mixed page test/index.html', why: CI_RULES.skipMixedPage });
+} else try {
   await page.goto(url, { waitUntil: 'load', timeout: 60000 });
   /* Wait until every element the bench took over has settled: no "started"
    * without a matching done/error, and at least one report in hand. */
@@ -189,6 +201,12 @@ await page.close();
 const perSample = Number(flag('sample-timeout', 90000));
 let firstDiag = null;
 for (const [src, tag, ownTimeout] of (argv.includes('--mixed-only') ? [] : SAMPLES)) {
+  const agentSkip = (CI_RULES.skipSamples || {})[src.split('/').pop()];
+  if (agentSkip) {
+    console.log(`  skip ${tag} ${src.split('/').pop()} (on the agent): ${agentSkip}`);
+    ciSkipped.push({ n: `${tag} ${src.split('/').pop()}`, why: agentSkip });
+    continue;
+  }
   const p2 = await browser.newPage();
   watch(p2, src);
   try {
@@ -237,8 +255,7 @@ const name = (e) => `${e.kind || '?'} ${e.format || '?'} ${(e.url || '').split('
 /* A baseline of samples known not to decode, so this job reports a new break
  * rather than the backlog it inherited - and so the baseline cannot rot: a
  * listed sample that starts passing is a failure too, telling us to drop it. */
-let KNOWN = {};
-try { KNOWN = JSON.parse(await readFile(join(ROOT, 'ci', 'known-failures.json'), 'utf8')).known || {}; } catch {}
+const KNOWN = BASELINE.known || {};
 const keyOf = (e) => (e.url || '').split('/').pop();
 
 const done = elements.filter(e => e.status === 'done');
@@ -277,6 +294,7 @@ if (expected.length) suites.push(suite('known-broken', expected.map(e => ({
 if (unavailable.length) suites.push(suite('unavailable', unavailable.map(e => ({
   n: name(e), why: e.detail || 'no accessor published for this format'
 })), 'skipped'));
+if (ciSkipped.length) suites.push(suite('skipped-on-agent', ciSkipped, 'skipped'));
 if (!reports.length) suites.push(suite('bench', [{ n: 'the bench produced no report', why: 'the page did not run: ' + [...new Set(consoleErrors)].slice(0, 3).join(' ; ') }], 'failure'));
 
 await writeFile(join(ROOT, 'ci', 'bench-results.xml'),

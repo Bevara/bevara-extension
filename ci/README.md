@@ -37,6 +37,20 @@ Today that is the four MPEG-1/2 samples. The same content decodes through the
 player - the Showcase `mpeg2` demo passes - so it is the extension's route that
 breaks, not the codec. Not yet diagnosed.
 
+## What the agent cannot do
+
+`known-failures.json` has a second section, `ci`, for what the Jenkins agent
+cannot do at all. It applies only there (`JENKINS_URL`, `BUILD_NUMBER` or `CI`
+set, or `--ci` to try it locally); on a laptop everything runs. Each use is
+printed and reported as skipped.
+
+Today it holds the 28 MB 1080p trailer and, because that trailer sits on it,
+the mixed page: on the 2-CPU agent the page stops answering the browser
+protocol for more than twenty minutes, and build #7 spent 44 minutes finding
+that out twice. Every other sample still runs on its own page, so the mixed
+page costs nothing in coverage. This is a measurement, not a diagnosis -
+whether the agent is slow or stuck on that file is not known.
+
 ## Running it
 
 ```sh
